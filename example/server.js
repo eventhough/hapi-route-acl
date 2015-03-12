@@ -140,7 +140,9 @@ exports = module.exports = (function() {
     }]
   );
 
-  server.start();
+  server.start(function() {
+    console.log('Server running at: ' + server.info.uri);
+  });
 
   return server;
 })();
