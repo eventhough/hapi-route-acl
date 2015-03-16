@@ -2,6 +2,8 @@
 
 Fine-grained route access control based on CRUD for [hapi.js](http://hapijs.com/)
 
+[![Build Status](https://travis-ci.org/eventhough/hapi-route-acl.svg)](https://travis-ci.org/eventhough/hapi-route-acl)
+
 ## Description
 
 This hapi.js plugin allows you to specify ACL permission requirements for each of your routes using CRUD. For example let's say you have a resource called "cars". You could protect each route with the following permissions:
