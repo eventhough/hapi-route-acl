@@ -213,19 +213,77 @@ describe('hapi-route-acl', function() {
       });
     });
 
-    // it('should throw an error if route permission is not a string', function(done) {
-    //   try {
-    //     internals.server.inject({
-    //       method: 'PUT',
-    //       url: '/cars/1'
-    //     }, function(res) {
-    //       expect(res.statusCode).to.equal(500);
-    //       done();
-    //     });
-    //   } catch(error) {
-    //     console.log('error caught');
-    //   }
-    // });
+    it('should throw an exception if route permission is not a string', function(done) {
+      server.ext('onPostAuth', function (request, reply) {
+        request.domain.on('error', function (error) {
+          request.caughtError = error;
+        });
+
+        return reply.continue();
+      }, { before: ['hapi-route-acl'] });
+
+      server.route({
+        method: 'GET',
+        path: '/cars',
+        config: {
+          handler: function(request, reply) {
+            reply(['Toyota Camry', 'Honda Accord', 'Ford Fusion']);
+          },
+          plugins: {
+            hapiRouteAcl: {
+              permissions: [12345]
+            }
+          }
+        }
+      });
+
+      server.inject({
+        method: 'GET',
+        url: '/cars'
+      }, function(res) {
+        var error = res.request.caughtError;
+
+        expect(error).to.be.an.instanceof(Error);
+        expect(error.message).to.equal('Uncaught error: permission must be a string');
+        done();
+      });
+    });
+
+    it('should throw an exception if route permission is not formatted properly', function(done) {
+      server.ext('onPostAuth', function (request, reply) {
+        request.domain.on('error', function (error) {
+          request.caughtError = error;
+        });
+
+        return reply.continue();
+      }, { before: ['hapi-route-acl'] });
+
+      server.route({
+        method: 'GET',
+        path: '/cars',
+        config: {
+          handler: function(request, reply) {
+            reply(['Toyota Camry', 'Honda Accord', 'Ford Fusion']);
+          },
+          plugins: {
+            hapiRouteAcl: {
+              permissions: ['carsread'] // missing colon
+            }
+          }
+        }
+      });
+
+      server.inject({
+        method: 'GET',
+        url: '/cars'
+      }, function(res) {
+        var error = res.request.caughtError;
+
+        expect(error).to.be.an.instanceof(Error);
+        expect(error.message).to.equal('Uncaught error: permission must be formatted: [routeName]:[read|create|edit|delete]');
+        done();
+      });
+    });
 
     it('should deny access to a route if user permission is not defined for the route', function(done) {
       server.route({

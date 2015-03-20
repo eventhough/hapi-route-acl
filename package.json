@@ -1,6 +1,6 @@
 {
   "name": "hapi-route-acl",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Access control list (ACL) plugin for hapijs",
   "main": "index.js",
   "scripts": {
