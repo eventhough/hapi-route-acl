@@ -1,49 +1,45 @@
 // Load modules
 
-var Boom = require('boom');
-var Hoek = require('hoek');
-var _ = require('lodash');
+const Boom = require('boom');
+const Hoek = require('hoek');
+const _ = require('lodash');
 
 // Declare internals
 
-var internals = {};
+let internals = {};
 internals.pluginName = 'hapiRouteAcl';
 
-exports.register = function (server, options, next) {
-  if (_.isUndefined(options.permissionsFunc)) {
-    next(new Error('options.permissionsFunc is required'));
-  } else if (!_.isFunction(options.permissionsFunc)) {
-    next(new Error('options.permissionsFunc must be a valid function'));
-  } else {
-    internals.permissionsFunc = options.permissionsFunc;
-    server.ext('onPostAuth', internals.implementation);
-    next();
-  }
-};
-
-exports.register.attributes = {
+exports.plugin = {  
+  register: (server, options) => {
+    if (_.isUndefined(options.permissionsFunc)) {
+      throw new Error('options.permissionsFunc is required');
+    } else if (!_.isFunction(options.permissionsFunc)) {
+      throw new Error('options.permissionsFunc must be a valid function');
+    } else {
+      internals.permissionsFunc = options.permissionsFunc;
+      server.ext({type:'onPostAuth', method: internals.implementation});
+    }
+  },
   pkg: require('./package.json')
-};
+}
 
-internals.implementation = function(request, reply) {
+internals.implementation = function(request, h) {
   if (!_.isEmpty(request.route.settings.plugins[internals.pluginName])) {
-
-    var requiredPermissions = request.route.settings.plugins[internals.pluginName].permissions;
-
+    let requiredPermissions = request.route.settings.plugins[internals.pluginName].permissions;
     if (!_.isEmpty(requiredPermissions)) {
       internals.permissionsFunc(request.auth.credentials, function(error, userPermissions) {
-        var hasPermission = internals.checkPermissions(requiredPermissions, userPermissions);
+        let hasPermission = internals.checkPermissions(requiredPermissions, userPermissions);
         if (hasPermission) {
-          return reply.continue();
+          return h.continue();
         } else {
-          return reply(Boom.unauthorized('Access denied'));
+          throw Boom.unauthorized('Access denied');
         }
       });
     } else {
-      return reply.continue();
+      return h.continue();
     }
   } else {
-    return reply.continue();
+    return h.continue();
   }
 };
 
@@ -52,17 +48,17 @@ internals.checkPermissions = function(requiredPermissions, userPermissions) {
     requiredPermissions = [requiredPermissions];
   }
 
-  var permissionMap = {};
+  let permissionMap = {};
 
   _.forEach(requiredPermissions, function(requiredPermission) {
     Hoek.assert(_.isString(requiredPermission), 'permission must be a string');
 
-    var parts = requiredPermission.split(':');
+    let parts = requiredPermission.split(':');
 
     Hoek.assert(parts.length === 2, 'permission must be formatted: [routeName]:[read|create|edit|delete]');
 
-    var routeName = parts[0];
-    var crud = parts[1];
+    let routeName = parts[0];
+    let crud = parts[1];
 
     if (_.isUndefined(userPermissions[routeName]) || _.isUndefined(userPermissions[routeName][crud])) {
       permissionMap[requiredPermission] = false;
@@ -71,7 +67,7 @@ internals.checkPermissions = function(requiredPermissions, userPermissions) {
     }
   });
 
-  var hasPermission = _.reduce(permissionMap, function(result, permission) {
+  let hasPermission = _.reduce(permissionMap, function(result, permission) {
     result = result && permission;
     return result;
   });
